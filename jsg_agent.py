@@ -11,12 +11,12 @@ class Agent:
 
         # Hyperparameter
         self.alpha = 0.01
-        self.gamma = 0.5
+        self.gamma = 0.9
 
-        self.max_episode = 50000
-        self.max_iteration = 1000
+        self.max_episode = 1000
+        self.max_iteration = 10000
 
-        self.epsilon = 0.1
+        self.epsilon = 0.001
 
         self.state_size = env.observation_space.n
         self.action_size = env.action_space.n
@@ -44,25 +44,33 @@ class Agent:
 
         return action
 
+    # Double Q-Learning
     def update_Q(self, state, new_state, reward, action):
         if np.random.rand() > 0.5:
-            self.Q1[state][action] = self.Q1[state][action] + self.alpha*(reward+self.gamma*np.max(self.Q1[new_state, action])-self.Q1[state][action])
+            self.Q1[state][action] = self.Q1[state][action] + self.alpha*(reward+self.gamma*self.Q2[new_state][np.argmax(self.Q1[new_state])]-self.Q1[state][action])
         else:
             self.Q2[state][action] = self.Q2[state][action] + self.alpha * (
-                        reward + self.gamma * np.max(self.Q1[new_state, action]) - self.Q2[state][action])
+                        reward + self.gamma * self.Q1[new_state][np.argmax(self.Q2[new_state])] - self.Q2[state][action])
     def learn(self):
         rewards = []
         for cur_episode in range(self.max_episode):
             state = self.env.reset()
             episode_reward = 0
             step = 0
+            done = False
+
             # While episode is terminated
-            while True and step < self.max_iteration:
+            while not done:
                 action = self.select_action(state)
                 new_state, reward, done, _ = self.env.step(action)
 
-                if reward==0:
-                    reward=-0.01
+                if done:
+                    if state == self.state_size-1:
+                        reward = +1
+                    else:
+                        reward = -1
+                else:
+                    reward = -0.01
 
                 self.update_Q(state, new_state, reward, action)
 
@@ -72,6 +80,7 @@ class Agent:
 
                 if done:
                     break
+
 
             rewards.append(episode_reward)
 
