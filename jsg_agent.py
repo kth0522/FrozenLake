@@ -63,7 +63,7 @@ class Agent:
             while not done:
                 action = self.select_action(state)
                 new_state, reward, done, _ = self.env.step(action)
-
+1
                 if done:
                     if state == self.state_size-1:
                         reward = +1
