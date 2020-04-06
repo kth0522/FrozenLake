@@ -4,19 +4,25 @@ import time
 
 class Agent:
     def __init__(self, Q, env, mode):
-        self.Q1 = Q
-        self.Q2 = Q
+        self.Q = Q
         self.env = env
         self.mode = mode
 
         # Hyperparameter
         self.alpha = 0.01
-        self.gamma = 0.9
+        self.max_alpha = 0.01
+        self.min_alpha = 0.001
+        self.decay_rate = 0.001
 
-        self.max_episode = 1000
+        self.gamma = 0.4
+
+        self.max_episode = 20000
         self.max_iteration = 10000
 
         self.epsilon = 0.001
+        self.max_epsilon = 0.001
+        self.min_epsilon = 0.0001
+
 
         self.state_size = env.observation_space.n
         self.action_size = env.action_space.n
@@ -24,8 +30,8 @@ class Agent:
         if mode == "learning_mode":
             # Initializing Q table
             for i in range(self.state_size):
-                self.Q1[i]
-                self.Q2[i]
+                self.Q[i]
+
         elif mode == "testing_mode":
             # If it is in testing mode, just use the existing Q table
             pass
@@ -38,48 +44,46 @@ class Agent:
     # Epsilon-greedy exploration
     def select_action(self, state):
         if np.random.rand() > self.epsilon:
-            action = np.argmax(self.Q1[state]+self.Q2[state])
+            action = np.argmax(self.Q[state])
         else:
             action = np.random.choice(self.actions)
 
         return action
 
-    # Double Q-Learning
     def update_Q(self, state, new_state, reward, action):
-        if np.random.rand() > 0.5:
-            self.Q1[state][action] = self.Q1[state][action] + self.alpha*(reward+self.gamma*self.Q2[new_state][np.argmax(self.Q1[new_state])]-self.Q1[state][action])
-        else:
-            self.Q2[state][action] = self.Q2[state][action] + self.alpha * (
-                        reward + self.gamma * self.Q1[new_state][np.argmax(self.Q2[new_state])] - self.Q2[state][action])
+        self.Q[state][action] = (1-self.alpha)*self.Q[state][action]+self.alpha*(reward+self.gamma*np.max(self.Q[new_state]))
+
     def learn(self):
         rewards = []
         for cur_episode in range(self.max_episode):
             state = self.env.reset()
             episode_reward = 0
-            step = 0
             done = False
+            step = 0
 
             # While episode is terminated
             while not done:
+                self.epsilon = self.min_epsilon + (self.max_epsilon-self.min_epsilon)*np.exp(-self.decay_rate * step)
+                self.alpha = self.min_alpha + (self.max_alpha-self.min_epsilon)*np.exp(-self.decay_rate * step)
+
                 action = self.select_action(state)
                 new_state, reward, done, _ = self.env.step(action)
-1
-                if done:
-                    if state == self.state_size-1:
-                        reward = +1
+
+                if reward == 0:
+                    if done:
+                        if state == self.state_size-1:
+                            reward = 1
+                        else:
+                            reward = -1
                     else:
-                        reward = -1
-                else:
-                    reward = -0.01
+                        reward = -0.01
+
 
                 self.update_Q(state, new_state, reward, action)
 
                 state = new_state
                 episode_reward += reward
-                step+=1
-
-                if done:
-                    break
+                step += 1
 
 
             rewards.append(episode_reward)
