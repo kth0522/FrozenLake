@@ -28,7 +28,7 @@ class Agent:
         self.action_size = env.action_space.n
 
         if mode == "learning_mode":
-            # Initializing Q table
+            # Initializing Q
             for i in range(self.state_size):
                 self.Q[i]
 
